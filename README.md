@@ -100,7 +100,7 @@ A full-stack, role-based hospital management web application built for managing 
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/RushilReddy909/Hospital-Management.git
+git clone https://github.com/Gangasai232/Neocure.git
 cd Hospital-Management
 ```
 
