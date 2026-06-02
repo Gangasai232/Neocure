@@ -1,0 +1,5 @@
+/node_modules
+.env
+/.vscode
+/ai_model/model.pkl
+/ai_model/venv
