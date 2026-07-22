@@ -1,7 +1,6 @@
 import "./config/environment.js";
 import express from "express";
 import connectDB from "./config/connectDB.js";
-import { initRedis } from "./utils/cache.js";
 import authRoutes from "./routes/authRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -47,6 +46,5 @@ if (process.env.NODE_ENV === "production") {
 
 app.listen(PORT, () => {
   connectDB();
-  initRedis();
   console.log(`Server started on port ${PORT}`);
 });

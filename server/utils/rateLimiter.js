@@ -1,56 +1,35 @@
-import { getRedis } from "./cache.js";
+// In-memory sliding window rate limiter (Redis-free)
+const inMemoryStore = new Map();
 
 /**
- * Sliding window rate limiter using Redis
+ * Sliding window rate limiter using in-memory Map
  * @param {string} key - Unique identifier (e.g., user ID or IP address)
  * @param {number} limit - Number of allowed requests
  * @param {number} windowMs - Time window in milliseconds
  * @returns {Promise<{allowed: boolean, remaining: number, resetTime: number}>}
  */
 export const checkLimit = async (key, limit, windowMs) => {
-  const redis = getRedis();
-
-  if (!redis) {
-    // Fail-open: if Redis is unavailable, allow the request
-    return {
-      allowed: true,
-      remaining: limit,
-      resetTime: Date.now() + windowMs,
-    };
-  }
-
   try {
     const now = Date.now();
     const windowStart = now - windowMs;
-    const redisKey = `rate_limit:${key}`;
 
-    // Get all requests within the window
-    const count = await redis.zcount(redisKey, windowStart, now);
+    let timestamps = inMemoryStore.get(key) || [];
+    timestamps = timestamps.filter((timestamp) => timestamp > windowStart);
 
-    if (count >= limit) {
-      // Rate limit exceeded
-      const oldestRequest = await redis.zrange(redisKey, 0, 0);
-      const resetTime =
-        oldestRequest && oldestRequest.length > 0
-          ? parseInt(oldestRequest[0]) + windowMs
-          : now + windowMs;
-
+    if (timestamps.length >= limit) {
+      const resetTime = timestamps[0] + windowMs;
       return { allowed: false, remaining: 0, resetTime };
     }
 
-    // Add current request to sorted set with timestamp as both score and member
-    await redis.zadd(redisKey, now, now.toString());
+    timestamps.push(now);
+    inMemoryStore.set(key, timestamps);
 
-    // Set expiration to window duration
-    await redis.expire(redisKey, Math.ceil(windowMs / 1000));
-
-    const remaining = limit - count - 1;
+    const remaining = limit - timestamps.length;
     const resetTime = now + windowMs;
 
     return { allowed: true, remaining, resetTime };
   } catch (error) {
     console.error("Rate limiter error:", error.message);
-    // Fail-open on error
     return {
       allowed: true,
       remaining: limit,
@@ -66,7 +45,7 @@ export const checkLimit = async (key, limit, windowMs) => {
  */
 export const parseRateLimitConfig = (configString) => {
   if (!configString) {
-    throw new Error("Rate limit config is required");
+    return { limit: 100, windowMs: 15 * 60 * 1000 };
   }
 
   const [attempts, minutes] = configString.split(":");
@@ -74,9 +53,7 @@ export const parseRateLimitConfig = (configString) => {
   const windowMs = parseInt(minutes) * 60 * 1000;
 
   if (isNaN(limit) || isNaN(windowMs) || limit <= 0 || windowMs <= 0) {
-    throw new Error(
-      `Invalid rate limit config: ${configString}. Expected format: "attempts:minutes"`
-    );
+    return { limit: 100, windowMs: 15 * 60 * 1000 };
   }
 
   return { limit, windowMs };

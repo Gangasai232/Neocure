@@ -1,59 +1,18 @@
-import { createClient } from "redis";
+// In-memory cache implementation (Redis-free)
+const inMemoryCache = new Map();
 
-let redisClient = null;
-
-// Initialize Redis client
 export const initRedis = async () => {
-  if (process.env.REDIS_ENABLED === "false") {
-    console.log("Redis disabled via REDIS_ENABLED=false");
-    redisClient = null;
-    return null;
-  }
-
-  try {
-    redisClient = createClient({
-      password: process.env.REDIS_PASSWORD || undefined,
-      socket: {
-        host: process.env.REDIS_HOST || "localhost",
-        port: Number(process.env.REDIS_PORT) || 6379,
-        reconnectStrategy: (retries) => Math.min(retries * 50, 500),
-      },
-    });
-
-    redisClient.on("error", (err) => {
-      console.error("Redis Client Error:", err);
-    });
-
-    redisClient.on("connect", () => {
-      console.log("Redis Connected Successfully");
-    });
-
-    await redisClient.connect();
-    return redisClient;
-  } catch (err) {
-    console.error("Failed to initialize Redis:", err);
-    redisClient = null;
-  }
+  return null;
 };
 
-// Get Redis client instance
-export const getRedis = () => redisClient;
+export const getRedis = () => null;
 
-// Cache operations
 export const cache = {
-  // Set cache with TTL
+  // Set cache with TTL (seconds)
   async set(key, value, ttl = 300) {
     try {
-      if (!redisClient) return null;
-
-      const serialized = JSON.stringify(value);
-
-      if (ttl) {
-        await redisClient.setEx(key, ttl, serialized);
-      } else {
-        await redisClient.set(key, serialized);
-      }
-
+      const expireAt = ttl ? Date.now() + ttl * 1000 : null;
+      inMemoryCache.set(key, { value, expireAt });
       return true;
     } catch (err) {
       console.error(`Cache SET error for ${key}:`, err);
@@ -64,16 +23,15 @@ export const cache = {
   // Get cache value
   async get(key) {
     try {
-      if (!redisClient) return null;
+      const item = inMemoryCache.get(key);
+      if (!item) return null;
 
-      const data = await redisClient.get(key);
-      if (!data) return null;
-
-      try {
-        return JSON.parse(data);
-      } catch {
-        return data;
+      if (item.expireAt && Date.now() > item.expireAt) {
+        inMemoryCache.delete(key);
+        return null;
       }
+
+      return item.value;
     } catch (err) {
       console.error(`Cache GET error for ${key}:`, err);
       return null;
@@ -83,36 +41,28 @@ export const cache = {
   // Delete cache key
   async del(key) {
     try {
-      if (!redisClient) return null;
-      return await redisClient.del(key);
+      return inMemoryCache.delete(key);
     } catch (err) {
       console.error(`Cache DEL error for ${key}:`, err);
       return null;
     }
   },
 
-  // Delete multiple keys by pattern (non-blocking)
+  // Delete multiple keys by pattern
   async delPattern(pattern) {
     try {
-      if (!redisClient) return 0;
+      const regexStr = "^" + pattern.replace(/\*/g, ".*") + "$";
+      const regex = new RegExp(regexStr);
+      let count = 0;
 
-      let cursor = 0;
-      let deleted = 0;
-
-      do {
-        const { cursor: next, keys } = await redisClient.scan(cursor, {
-          MATCH: pattern,
-          COUNT: 100,
-        });
-
-        cursor = Number(next);
-
-        if (keys.length) {
-          deleted += await redisClient.del(keys);
+      for (const key of inMemoryCache.keys()) {
+        if (regex.test(key)) {
+          inMemoryCache.delete(key);
+          count++;
         }
-      } while (cursor !== 0);
+      }
 
-      return deleted;
+      return count;
     } catch (err) {
       console.error(`Cache DELPATTERN error for ${pattern}:`, err);
       return 0;
