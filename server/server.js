@@ -14,6 +14,7 @@ import medicalRecordRoutes from "./routes/medicalRecordRoutes.js";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -35,12 +36,21 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  const clientBuildPath = path.join(__dirname, "..", "client", "dist");
+const clientBuildPath = path.join(__dirname, "..", "client", "dist");
+const indexPath = path.join(clientBuildPath, "index.html");
+
+if (fs.existsSync(indexPath)) {
   app.use(express.static(clientBuildPath));
 
   app.get("/{*any}", (req, res) => {
-    res.sendFile(path.join(clientBuildPath, "index.html"));
+    res.sendFile(indexPath);
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.json({
+      success: true,
+      message: "Hospital Management Backend API is running",
+    });
   });
 }
 
