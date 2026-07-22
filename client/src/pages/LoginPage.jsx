@@ -24,7 +24,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// ✅ Define Zod schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(4, "Password must be at least 4 characters"),
@@ -33,11 +32,12 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [verify, setVerify] = useState(true);
-
   const setUser = useUserStore((state) => state.setUser);
 
-  // ✅ React Hook Form setup
+  const [checkingAuth, setCheckingAuth] = useState(() => {
+    return !!localStorage.getItem("token");
+  });
+
   const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -64,26 +64,28 @@ export default function LoginPage() {
           hideProgressBar: true,
           closeOnClick: true,
           theme: "colored",
-        },
+        }
       );
     }
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCheckingAuth(false);
+      return;
+    }
+
     const verifyToken = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return setVerify(false);
-
       try {
-        const res = await api.get("/user", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        const res = await api.get("/user");
         setUser(res.data.data);
-        if (location.pathname === "/login")
+        if (location.pathname === "/login") {
           navigate("/home", { replace: true });
+        }
       } catch {
-        setVerify(false);
+        localStorage.removeItem("token");
+        setCheckingAuth(false);
       }
     };
 
@@ -102,7 +104,16 @@ export default function LoginPage() {
     }
   }, [location.state]);
 
-  if (verify) return false;
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <p className="text-sm font-medium text-slate-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

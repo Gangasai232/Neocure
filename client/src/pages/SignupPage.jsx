@@ -39,7 +39,40 @@ const signupSchema = z
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const [verify, setVerify] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(() => {
+    return !!localStorage.getItem("token");
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        await api.get("/user/verify");
+        navigate("/home", { replace: true });
+      } catch {
+        localStorage.removeItem("token");
+        setCheckingAuth(false);
+      }
+    };
+
+    verifyToken();
+  }, [navigate]);
+
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
+          <p className="text-sm font-medium text-slate-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ Form Setup
   const form = useForm({
@@ -74,28 +107,6 @@ export default function SignupPage() {
       );
     }
   };
-
-  useEffect(() => {
-    const verifyToken = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return setVerify(false);
-
-      try {
-        await api.get("/user/verify", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        navigate("/home", { replace: true });
-      } catch {
-        setVerify(false);
-      }
-    };
-
-    verifyToken();
-  }, [navigate]);
-
-  if (verify) return null;
 
   return (
     <>
