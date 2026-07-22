@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: neocure-backend
+    env: node
+    plan: free
+    buildCommand: npm run build:server
+    startCommand: node server/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  - type: static
+    name: neocure-frontend
+    buildCommand: cd client && npm install --include=dev && npm run build
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
