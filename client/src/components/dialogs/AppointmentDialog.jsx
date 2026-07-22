@@ -44,6 +44,7 @@ const AppointmentDialog = ({
   onSuccess,
 }) => {
   const isEdit = mode === "edit";
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
 
   const handleSubmit = async (values) => {
     try {
@@ -81,6 +82,21 @@ const AppointmentDialog = ({
     }
   };
 
+  const parseDateSafely = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    if (typeof val === "string") {
+      const cleanStr = val.split("T")[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+        const [year, month, day] = cleanStr.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      }
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
@@ -110,25 +126,19 @@ const AppointmentDialog = ({
                 control={form.control}
                 name="date"
                 render={({ field }) => {
-                  const displayValue = field.value
-                    ? field.value instanceof Date
-                      ? field.value.toLocaleDateString()
-                      : new Date(field.value).toLocaleDateString()
+                  const calendarDate = parseDateSafely(field.value);
+                  const displayValue = calendarDate
+                    ? calendarDate.toLocaleDateString()
                     : "Select date";
-
-                  const calendarDate = field.value
-                    ? field.value instanceof Date
-                      ? field.value
-                      : new Date(field.value)
-                    : undefined;
 
                   return (
                     <FormItem className="flex flex-col gap-3 w-1/2">
                       <FormLabel>Date of Appointment</FormLabel>
-                      <Popover>
+                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
+                              type="button"
                               variant="outline"
                               className="w-full justify-between font-normal"
                             >
@@ -140,11 +150,12 @@ const AppointmentDialog = ({
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={calendarDate}
+                            selected={calendarDate || undefined}
                             captionLayout="dropdown"
                             onSelect={(date) => {
                               if (date) {
                                 field.onChange(date);
+                                setPopoverOpen(false);
                               }
                             }}
                           />
