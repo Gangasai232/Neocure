@@ -10,7 +10,8 @@ import doctorRoutes from "./routes/doctorRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import servicesRoutes from "./routes/servicesRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import predictRoutes from "./routes/predictRoutes.js";
+import departmentRoutes from "./routes/departmentRoutes.js";
+import medicalRecordRoutes from "./routes/medicalRecordRoutes.js";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -32,7 +33,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/appointment", appointmentRoutes);
 app.use("/api/services", servicesRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/disease", predictRoutes);
+app.use("/api/departments", departmentRoutes);
+app.use("/api/medical-records", medicalRecordRoutes);
 
 if (process.env.NODE_ENV === "production") {
   const clientBuildPath = path.join(__dirname, "..", "client", "dist");

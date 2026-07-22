@@ -103,7 +103,7 @@ const UserManagement = () => {
       const res = await admin.get(`/users/${user._id}`);
       setRoleData(res.data.data);
       setModalOpen(true);
-    } catch (err) {
+    } catch {
       toast.error("Error occurred while fetching data");
     }
   };

@@ -50,9 +50,9 @@ export default function LandingPage() {
     },
     {
       icon: <Activity className="w-6 h-6" />,
-      title: "Health Predictions",
+      title: "Care Coordination",
       description:
-        "AI-powered health risk assessment. Get insights into potential health concerns before they become serious.",
+        "Coordinate consultations, diagnostics, and follow-up care from one connected hospital platform.",
       gradient: "from-orange-500 to-red-500",
     },
     {
@@ -232,7 +232,7 @@ export default function LandingPage() {
             <div className="space-y-8">
               <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg">
                 <Sparkles className="w-3 h-3 mr-1" />
-                AI-Powered Healthcare Platform
+                Modern Hospital Management Platform
               </Badge>
 
               <h1 className="text-5xl md:text-6xl font-bold leading-tight">
@@ -245,7 +245,7 @@ export default function LandingPage() {
               <p className="text-lg text-muted-foreground leading-relaxed">
                 Experience the future of healthcare with our comprehensive
                 Hospital Management System. Book appointments, manage records,
-                and get AI-powered health predictions - all in one place.
+                and stay connected with your care team - all in one place.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -385,9 +385,9 @@ export default function LandingPage() {
                 <h3 className="text-3xl font-bold">Our Mission</h3>
                 <p className="text-muted-foreground text-lg leading-relaxed">
                   To make quality healthcare accessible to everyone through
-                  innovative technology. We combine advanced AI-powered
-                  diagnostics with a user-friendly platform that connects
-                  patients with the best healthcare professionals.
+                    innovative technology. We provide a user-friendly platform
+                    that connects patients with the best healthcare
+                    professionals.
                 </p>
                 <p className="text-muted-foreground text-lg leading-relaxed">
                   Our comprehensive Hospital Management System streamlines every
@@ -415,8 +415,8 @@ export default function LandingPage() {
                 </div>
                 <h4 className="text-xl font-bold mb-2">Innovation</h4>
                 <p className="text-muted-foreground">
-                  Leveraging AI and machine learning to provide predictive
-                  health insights and personalized care
+                  Streamlining scheduling, records, and operations for faster
+                  and more reliable hospital workflows
                 </p>
               </Card>
 

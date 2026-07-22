@@ -4,8 +4,8 @@ import {
   getSelfPatient,
 } from "../controllers/patientController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
+import { cacheUserRole } from "../middlewares/cacheMiddleware.js";
 import { body } from "express-validator";
-import { getAllDoctors } from "../controllers/doctorController.js";
 
 const router = express.Router();
 
@@ -42,8 +42,8 @@ const validation = [
 ];
 
 //User Routes
-router.post("/", verifyToken, validation, upsertSelfPatient);
+router.post("/", verifyToken, cacheUserRole, validation, upsertSelfPatient);
 
-router.get("/", verifyToken, getSelfPatient);
+router.get("/", verifyToken, cacheUserRole, getSelfPatient);
 
 export default router;

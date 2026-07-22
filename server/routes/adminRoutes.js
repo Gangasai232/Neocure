@@ -1,6 +1,7 @@
 import express from "express";
 import { body } from "express-validator";
 import { verifyToken, adminOnly } from "../middlewares/authMiddleware.js";
+import { cacheUserRole } from "../middlewares/cacheMiddleware.js";
 import { createRateLimitMiddleware } from "../middlewares/rateLimitMiddleware.js";
 import {
   addPatient,
@@ -33,6 +34,7 @@ import {
 import { getAllTransactions } from "../controllers/paymentController.js";
 import {
   createAppointment,
+  cancelAppointment,
   getAllAppointments,
   getAppointment,
   updateAppointment,
@@ -203,6 +205,7 @@ const doctorUpdateValidation = [
 router.get(
   "/verify",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   async (req, res) => {
@@ -214,13 +217,14 @@ router.get(
 );
 
 //Patient Routes
-router.get("/patients", verifyToken, adminOnly, adminRateLimit, getAllPatients);
+router.get("/patients", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getAllPatients);
 
-router.get("/patients/:id", verifyToken, adminOnly, adminRateLimit, getPatient);
+router.get("/patients/:id", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getPatient);
 
 router.post(
   "/patients",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   patientCreateValidation,
@@ -230,6 +234,7 @@ router.post(
 router.put(
   "/patients/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   patientUpdateValidation,
@@ -239,35 +244,38 @@ router.put(
 router.delete(
   "/patients/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   deletePatient
 );
 
 //User Routes
-router.get("/users", verifyToken, adminOnly, adminRateLimit, getAllUsers);
+router.get("/users", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getAllUsers);
 
-router.get("/users/:id", verifyToken, adminOnly, adminRateLimit, getUser);
+router.get("/users/:id", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getUser);
 
 router.put(
   "/users/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   userValidation,
   updateUser
 );
 
-router.delete("/users/:id", verifyToken, adminOnly, adminRateLimit, deleteUser);
+router.delete("/users/:id", verifyToken, cacheUserRole, adminOnly, adminRateLimit, deleteUser);
 
 //Doctor Routes
-router.get("/doctors", verifyToken, adminOnly, adminRateLimit, getAllDoctors);
+router.get("/doctors", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getAllDoctors);
 
-router.get("/doctors/:id", verifyToken, adminOnly, adminRateLimit, getDoctor);
+router.get("/doctors/:id", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getDoctor);
 
 router.post(
   "/doctors",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   doctorCreateValidation,
@@ -277,6 +285,7 @@ router.post(
 router.put(
   "/doctors/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   doctorUpdateValidation,
@@ -286,29 +295,32 @@ router.put(
 router.delete(
   "/doctors/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   deleteDoctor
 );
 
 //Services Routes
-router.get("/services", verifyToken, adminOnly, adminRateLimit, getAllServices);
+router.get("/services", verifyToken, cacheUserRole, adminOnly, adminRateLimit, getAllServices);
 
 router.get(
   "/services/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   getServiceById
 );
 
-router.post("/services", verifyToken, adminOnly, adminRateLimit, createService);
+router.post("/services", verifyToken, cacheUserRole, adminOnly, adminRateLimit, createService);
 
-router.put("/services", verifyToken, adminOnly, adminRateLimit, updateService);
+router.put("/services/:id", verifyToken, cacheUserRole, adminOnly, adminRateLimit, updateService);
 
 router.delete(
-  "/services",
+  "/services/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   deleteService
@@ -318,6 +330,7 @@ router.delete(
 router.get(
   "/payment",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   getAllTransactions
@@ -327,6 +340,7 @@ router.get(
 router.get(
   "/appointments",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   getAllAppointments
@@ -335,6 +349,7 @@ router.get(
 router.get(
   "/appointments/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   getAppointment
@@ -343,6 +358,7 @@ router.get(
 router.post(
   "/appointments",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   createAppointment
@@ -351,9 +367,19 @@ router.post(
 router.put(
   "/appointments/:id",
   verifyToken,
+  cacheUserRole,
   adminOnly,
   adminRateLimit,
   updateAppointment
+);
+
+router.post(
+  "/appointments/:id/cancel",
+  verifyToken,
+  cacheUserRole,
+  adminOnly,
+  adminRateLimit,
+  cancelAppointment
 );
 
 export default router;

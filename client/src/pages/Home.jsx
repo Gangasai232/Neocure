@@ -32,7 +32,7 @@ const Home = () => {
           (appointment) => appointment.status === "Pending"
         );
         setNextAppointment(pendingAppointments[0]);
-      } catch (err) {
+      } catch {
         setShowNoPatientAlert(true);
       }
     };

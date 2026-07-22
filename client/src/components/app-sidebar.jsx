@@ -7,7 +7,6 @@ import {
   BarChart3,
   CalendarCheck,
   ClipboardPlus,
-  Brain,
 } from "lucide-react";
 import { DatePicker } from "@/components/date-picker";
 import { NavUser } from "@/components/nav-user";
@@ -52,7 +51,6 @@ const sidebarConfig = {
     { title: "Our Doctors", url: "/doctors", icon: UsersRound },
     { title: "Services", url: "/services", icon: ShieldPlus },
     { title: "Transactions", url: "/transactions", icon: DollarSign },
-    { title: "AI Disease Predictor", url: "/predictor", icon: Brain },
   ],
 };
 
@@ -105,8 +103,8 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className={`p-5 font-semibold hover:bg-green-500 hover:text-white transition-all ${
-                      path === item.url ? "bg-green-500 text-white" : ""
+                    className={`p-5 font-semibold hover:bg-blue-600 hover:text-white transition-all ${
+                      path === item.url ? "bg-blue-600 text-white" : ""
                     }`}
                   >
                     <Link to={item.url}>

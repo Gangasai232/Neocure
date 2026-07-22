@@ -4,6 +4,12 @@ let redisClient = null;
 
 // Initialize Redis client
 export const initRedis = async () => {
+  if (process.env.REDIS_ENABLED === "false") {
+    console.log("Redis disabled via REDIS_ENABLED=false");
+    redisClient = null;
+    return null;
+  }
+
   try {
     redisClient = createClient({
       password: process.env.REDIS_PASSWORD || undefined,

@@ -1,6 +1,6 @@
 # 🏥 Hospital Management System
 
-A full-stack, role-based hospital management web application built for managing patients, appointments, doctors, services, and payments with AI-powered disease prediction and comprehensive analytics.
+A production-oriented MERN hospital management application for managing patients, appointments, doctors, services, departments, medical records, payments, and analytics.
 
 🔗 [**Live Demo**](https://hospital-management-bmmd.onrender.com)
 
@@ -10,7 +10,7 @@ A full-stack, role-based hospital management web application built for managing 
 
 ### 👥 User Roles & Authentication
 
-- **Patient/User**: Book appointments, manage profile, browse services, make payments, and access AI disease predictor
+- **Patient/User**: Book appointments, manage profile, browse services, make payments, and review appointment history
 - **Doctor**: View and manage appointments, access patient information, and update availability status
 - **Admin**: Complete system control with user management, analytics dashboard, and full CRUD operations
 - **JWT-based secure authentication** with role-based access control (RBAC)
@@ -23,15 +23,6 @@ A full-stack, role-based hospital management web application built for managing 
 - Admin can view, create, update, and manage all appointments
 - Doctors can view their scheduled appointments and patient details
 - Form validations with real-time feedback using **Zod + React Hook Form**
-
-### 🤖 AI Disease Prediction
-
-- **Machine Learning model** integrated for disease prediction based on symptoms
-- Interactive symptom selector with search and filter functionality
-- Multi-symptom selection with visual badge interface
-- Real-time prediction results from Flask-based AI model
-- Supports 100+ symptoms and predicts various diseases
-- Common diseases reference list for quick information
 
 ### 💳 Services & Payments
 
@@ -54,7 +45,7 @@ A full-stack, role-based hospital management web application built for managing 
 ### 👨‍⚕️ Doctor Management
 
 - Admin can add, edit, and delete doctor profiles
-- Doctor details include **specialization**, **phone**, **age**, **gender**, and **status**
+- Doctor details include **specialization**, **department**, **phone**, **age**, **gender**, and **status**
 - Real-time status updates (Active/Away)
 - Doctor-specific dashboard with appointment overview
 
@@ -62,6 +53,7 @@ A full-stack, role-based hospital management web application built for managing 
 
 - Admin can view and manage all registered users
 - Patient profile management with medical information
+- Department and medical record APIs for hospital data organization
 - User role assignment and permissions control
 - Comprehensive user listing with filtering capabilities
 
@@ -78,7 +70,6 @@ A full-stack, role-based hospital management web application built for managing 
 - **Frontend**: React.js, Tailwind CSS, Shadcn UI, React Hook Form, Zod, React Router, Zustand (State Management)
 - **Backend**: Node.js, Express.js, MongoDB, Mongoose, JWT, Express Validator
 - **Payment**: Razorpay API Integration
-- **AI/ML**: Python, Flask, scikit-learn, Joblib (Disease Prediction Model)
 - **PDF Generation**: jsPDF with autoTable plugin
 - **Charts**: Recharts library for data visualization
 
@@ -90,7 +81,6 @@ A full-stack, role-based hospital management web application built for managing 
 
 - Node.js ≥ 18
 - MongoDB (local or cloud)
-- Python ≥ 3.8 (for AI model)
 - Razorpay test account
 
 ---
@@ -121,7 +111,6 @@ MONGO_URL=your_mongodb_url
 JWT_SECRET=your_secret_key
 RAZORPAY_KEY_ID=your_key
 RAZORPAY_KEY_SECRET=your_secret
-AI_MODEL_SERVICE_URL=http://localhost:5001
 ```
 
 #### 3. Frontend Setup
@@ -131,30 +120,9 @@ cd client
 npm install
 ```
 
-#### 4. AI Model Setup
+#### 4. Run the Application
 
-```bash
-cd ai_model
-pip install -r requirements.txt
-```
-
-Generate the ML model (optional, if model.pkl doesn't exist):
-
-```bash
-python gen_model.py
-```
-
-#### 5. Run the Application
-
-Start the AI model server:
-
-```bash
-cd ai_model
-python app.py
-# Runs on http://localhost:5001
-```
-
-Start the backend server (in new terminal):
+Start the backend server:
 
 ```bash
 npm run dev
@@ -172,13 +140,6 @@ npm run dev
 ---
 
 ## 📸 Key Features Overview
-
-### 🤖 Disease Prediction System
-
-- ML-powered symptom analysis
-- 100+ symptoms database
-- Real-time prediction API
-- Flask backend integration
 
 ### 📊 Admin Analytics
 
@@ -202,6 +163,7 @@ npm run dev
 - Password hashing with bcrypt
 - Role-based middleware protection
 - Input validation using Zod and Express Validator
+- Centralized JWT role authorization middleware
 - Protected API endpoints
 - CORS configuration
 

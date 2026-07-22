@@ -40,9 +40,12 @@ const registerUser = async (req, res) => {
       message: "User successfully registered",
     });
   } catch (err) {
+    console.error("Register user error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error while processing your request",
+      ...(process.env.NODE_ENV !== "production" && { details: err.message }),
     });
   }
 };

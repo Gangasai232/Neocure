@@ -21,17 +21,47 @@ const createOrder = async (req, res) => {
 
   const { amount } = req.body;
 
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Amount must be greater than 0",
+    });
+  }
+
+  const amountInPaise = Math.round(Number(amount) * 100);
+  if (!Number.isInteger(amountInPaise) || amountInPaise <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payment amount",
+    });
+  }
+
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    return res.status(500).json({
+      success: false,
+      message: "Razorpay keys are not configured on the server",
+    });
+  }
+
   const options = {
-    amount: amount * 100, // convert to paise
+    amount: amountInPaise, // convert to paise
     currency: "INR",
     receipt: `receipt_order_${Date.now()}`,
   };
 
   try {
     const order = await razorpay.orders.create(options);
-    res.json({ success: true, order });
+    res.json({
+      success: true,
+      order,
+      key_id: process.env.RAZORPAY_KEY_ID,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      success: false,
+      message: "Unable to create Razorpay order",
+      error: err.message,
+    });
   }
 };
 

@@ -16,6 +16,11 @@ const authSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    avatar: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     role: {
       type: String,
       default: "user",

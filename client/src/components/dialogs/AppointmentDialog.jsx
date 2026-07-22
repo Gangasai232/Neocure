@@ -41,21 +41,42 @@ const AppointmentDialog = ({
   selectedDoctor,
   appointment,
   mode = "create",
+  onSuccess,
 }) => {
   const isEdit = mode === "edit";
 
   const handleSubmit = async (values) => {
     try {
+      let dateString = "";
+      if (values.date instanceof Date) {
+        const year = values.date.getFullYear();
+        const month = String(values.date.getMonth() + 1).padStart(2, "0");
+        const day = String(values.date.getDate()).padStart(2, "0");
+        dateString = `${year}-${month}-${day}`;
+      } else if (typeof values.date === "string") {
+        dateString = values.date.split("T")[0];
+      }
+
+      const payload = {
+        ...values,
+        date: dateString,
+      };
+
       if (isEdit) {
-        await api.put(`/appointment/${appointment._id}`, values);
+        await api.put(`/appointment/${appointment._id}`, payload);
         toast.success("Appointment rescheduled successfully");
       } else {
-        await api.post("/appointment", values);
+        await api.post("/appointment", payload);
         toast.success("Appointment scheduled successfully");
       }
       setOpen(false);
+      if (onSuccess) onSuccess();
     } catch (err) {
-      toast.error("Appointment could not be scheduled");
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.errors?.[0] ||
+          "Appointment could not be scheduled"
+      );
       console.error(err);
     }
   };
@@ -69,7 +90,7 @@ const AppointmentDialog = ({
           </DialogTitle>
           <DialogDescription>
             {selectedDoctor
-              ? `Edit details for appointment with Dr. ${selectedDoctor.name}`
+              ? `Edit details for appointment with ${selectedDoctor.name?.startsWith("Dr.") ? selectedDoctor.name : `Dr. ${selectedDoctor.name}`}`
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -88,35 +109,51 @@ const AppointmentDialog = ({
               <FormField
                 control={form.control}
                 name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-3 w-1/2">
-                    <FormLabel>Date of Appointment</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between font-normal"
-                          >
-                            {field.value
-                              ? field.value.toLocaleDateString()
-                              : "Select date"}
-                            <ChevronDownIcon />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          captionLayout="dropdown"
-                          onSelect={(date) => field.onChange(date)}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const displayValue = field.value
+                    ? field.value instanceof Date
+                      ? field.value.toLocaleDateString()
+                      : new Date(field.value).toLocaleDateString()
+                    : "Select date";
+
+                  const calendarDate = field.value
+                    ? field.value instanceof Date
+                      ? field.value
+                      : new Date(field.value)
+                    : undefined;
+
+                  return (
+                    <FormItem className="flex flex-col gap-3 w-1/2">
+                      <FormLabel>Date of Appointment</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between font-normal"
+                            >
+                              {displayValue}
+                              <ChevronDownIcon />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={calendarDate}
+                            captionLayout="dropdown"
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(date);
+                              }
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
@@ -127,7 +164,7 @@ const AppointmentDialog = ({
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a time slot" />

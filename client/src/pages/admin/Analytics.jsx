@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import PieChart from "@/components/graphs/PieGraph";
 import BarGraph from "@/components/graphs/BarGraph";
 import AreaGraph from "@/components/graphs/AreaGraph";

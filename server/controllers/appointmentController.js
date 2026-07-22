@@ -6,6 +6,64 @@ import authModel from "../models/authModel.js";
 import mongoose from "mongoose";
 import { cache } from "../utils/cache.js";
 
+const APPOINTMENT_STATUS = ["Pending", "Completed", "Rejected", "Cancelled"];
+
+const normalizeToUtcDateOnly = (value) => {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const datePart = value.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Date(
+    Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+  );
+};
+
+const getScopedAppointmentFilter = async (user, appointmentId) => {
+  const filter = { _id: appointmentId };
+
+  if (user.role === "doctor") {
+    const doctor = await doctorModel.findOne({ doctorID: user.id }).select("_id");
+    if (!doctor) {
+      return { error: { status: 404, message: "Doctor profile not found" } };
+    }
+
+    filter.doctorID = doctor._id;
+    return { filter };
+  }
+
+  if (user.role === "patient" || user.role === "user") {
+    const patient = await patientModel.findOne({ patientID: user.id }).select("_id");
+    if (!patient) {
+      return { error: { status: 404, message: "Patient profile not found" } };
+    }
+
+    filter.patientID = patient._id;
+  }
+
+  return { filter };
+};
+
+const invalidateAppointmentCache = async (appointment) => {
+  const doctorIdStr = appointment.doctorID?.toString();
+  const patientIdStr = appointment.patientID?.toString();
+
+  if (doctorIdStr) {
+    await cache.del(`doctor:${doctorIdStr}:appointments`);
+  }
+
+  if (patientIdStr) {
+    await cache.delPattern(`user:${patientIdStr}:appointments:*`);
+  }
+};
+
 const createAppointment = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -20,99 +78,154 @@ const createAppointment = async (req, res) => {
   const {
     doctorID: doctorDocId,
     patientID: patientUserIdFromBody,
-    date,
+    date: requestedDate,
     timeSlot,
   } = req.body;
 
-  // 1. Start a Session
-  const session = await mongoose.startSession();
+  const appointmentDate = normalizeToUtcDateOnly(requestedDate);
+  if (!appointmentDate) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid appointment date",
+    });
+  }
 
+  let session = null;
+  let sessionOptions = {};
   try {
-    // 2. Start Transaction with SERIALIZABLE isolation (Snapshot)
+    session = await mongoose.startSession();
     session.startTransaction({
       readConcern: { level: "snapshot" },
       writeConcern: { w: "majority" },
     });
+    sessionOptions = { session };
+  } catch {
+    if (session) {
+      try {
+        session.endSession();
+      } catch (_) {}
+      session = null;
+    }
+    sessionOptions = {};
+  }
 
+  try {
     const effectivePatientUserId =
       req.user.role === "admin" ? patientUserIdFromBody : requesterUserId;
 
     if (!effectivePatientUserId) {
-      if (session.inTransaction()) {
+      if (session && session.inTransaction()) {
         await session.abortTransaction();
       }
-      session.endSession();
+      if (session) session.endSession();
       return res.status(400).json({
         success: false,
         message: "patientID is required when booking as admin",
       });
     }
 
-    const pat = await patientModel
-      .findOne({ patientID: effectivePatientUserId })
-      .session(session);
+    let pat = await patientModel.findOne(
+      { patientID: effectivePatientUserId },
+      null,
+      sessionOptions
+    );
+
     if (!pat) {
-      throw new Error("Patient profile not found");
+      const user = await authModel.findById(effectivePatientUserId);
+      if (user) {
+        pat = new patientModel({
+          patientID: user._id,
+          name: user.name || "Patient",
+          age: 30,
+          gender: "Male",
+          phone: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+          description: "Registered Patient",
+        });
+        await pat.save(sessionOptions);
+        await authModel.findByIdAndUpdate(user._id, {
+          $set: { role: "patient" },
+        });
+      }
+    }
+
+    if (!pat) {
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Patient profile not found. Please complete your profile first.",
+      });
     }
     const patientID = pat._id;
 
-    // Doctor Schedule Locking / Availability Check
     if (!doctorDocId) {
-      if (session.inTransaction()) {
+      if (session && session.inTransaction()) {
         await session.abortTransaction();
       }
-      session.endSession();
+      if (session) session.endSession();
       return res.status(400).json({
         success: false,
         message: "Doctor ID is required",
       });
     }
 
-    const doctor = await doctorModel.findById(doctorDocId).session(session);
+    const doctor = await doctorModel.findById(doctorDocId, null, sessionOptions);
 
     if (!doctor) {
-      console.error(
-        `Doctor not found for doctorID: ${doctorDocId}, doctors collection check needed`
-      );
-      throw new Error(
-        `Doctor profile not found for ID ${doctorDocId}. The doctor may not have created their profile yet.`
-      );
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Doctor profile not found. Please refresh and try again.",
+      });
     }
 
     if (doctor.status === "Away") {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
       return res.status(400).json({
         success: false,
         message: "Doctor is currently unavailable (Status: Away)",
       });
     }
 
-    // Enforce one booking per doctor per timeSlot per date
-    const slotConflict = await appointmentModel
-      .findOne({ doctorID: doctor._id, date, timeSlot })
-      .session(session);
+    const slotConflict = await appointmentModel.findOne(
+      { doctorID: doctor._id, date: appointmentDate, timeSlot },
+      null,
+      sessionOptions
+    );
     if (slotConflict) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
       return res.status(409).json({
         success: false,
         message: "This time slot is already booked for the doctor.",
       });
     }
 
-    // Conflict Detection: Check if patient already booked for this doctor on same date
-    const existingPatientBooking = await appointmentModel
-      .findOne({
+    const existingPatientBooking = await appointmentModel.findOne(
+      {
         patientID,
         doctorID: doctor._id,
-        date,
-      })
-      .session(session);
+        date: appointmentDate,
+      },
+      null,
+      sessionOptions
+    );
 
     if (existingPatientBooking) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
       return res.status(409).json({
         success: false,
         message:
@@ -120,39 +233,35 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    // Create Appointment
     const appointment = new appointmentModel({
       patientID,
       doctorID: doctor._id,
-      date,
+      date: appointmentDate,
       timeSlot,
       status: "Pending",
       reason: req.body.reason,
     });
 
-    // Save with the session
-    await appointment.save({ session });
+    await appointment.save(sessionOptions);
 
-    // Clear appointment caches for doctor and patient
     await cache.del(`doctor:${doctor._id}:appointments`);
     await cache.delPattern(`user:${effectivePatientUserId}:appointments:*`);
 
-    // 3. Commit Transaction
-    await session.commitTransaction();
-    session.endSession();
+    if (session && session.inTransaction()) {
+      await session.commitTransaction();
+    }
+    if (session) session.endSession();
 
     return res.status(201).json({
       success: true,
       message: "Appointment successfully booked",
     });
   } catch (err) {
-    // 4. Rollback on failure
-    if (session.inTransaction()) {
+    if (session && session.inTransaction()) {
       await session.abortTransaction();
     }
-    session.endSession();
+    if (session) session.endSession();
 
-    // Check for MongoDB duplicate key error (Race condition catcher)
     if (err.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -170,18 +279,16 @@ const createAppointment = async (req, res) => {
 };
 
 const updateAppointment = async (req, res) => {
-  const { id: userId } = req.user;
   const { id: appointmentId } = req.params;
+  const errors = validationResult(req);
 
-  // Fetch user from DB to get current role (in case it was updated after login)
-  const user = await authModel.findById(userId);
-  if (!user) {
-    return res.status(404).json({
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
       success: false,
-      message: "User not found",
+      message: "Validation Failed",
+      errors: errors.array().map((err) => err.msg),
     });
   }
-  const role = user.role;
 
   if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
     return res.status(400).json({
@@ -191,32 +298,123 @@ const updateAppointment = async (req, res) => {
   }
 
   try {
-    const update = { status: req.body.status };
-    const filter = { _id: appointmentId };
+    const { filter, error } = await getScopedAppointmentFilter(
+      req.user,
+      appointmentId
+    );
 
-    if (role === "doctor") {
-      const doctor = await doctorModel.findOne({ doctorID: userId });
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor profile not found",
-        });
-      }
-      filter.doctorID = doctor._id;
-    } else if (role !== "admin") {
-      return res.status(403).json({
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: "Unauthorized",
+        message: error.message,
       });
     }
 
-    const appointment = await appointmentModel.findOneAndUpdate(
-      filter,
-      update,
-      {
-        new: true,
-      }
+    const hasScheduleUpdate = ["doctorID", "date", "timeSlot", "reason"].some(
+      (field) => typeof req.body[field] !== "undefined"
     );
+    const hasStatusUpdate = typeof req.body.status !== "undefined";
+
+    if (!hasScheduleUpdate && !hasStatusUpdate) {
+      return res.status(400).json({
+        success: false,
+        message: "No appointment changes were provided",
+      });
+    }
+
+    let appointment;
+
+    if (hasStatusUpdate) {
+      if (!APPOINTMENT_STATUS.includes(req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid appointment status",
+        });
+      }
+
+      if (req.user.role === "patient" && req.body.status !== "Cancelled") {
+        return res.status(403).json({
+          success: false,
+          message: "Patients can only cancel their appointments",
+        });
+      }
+
+      appointment = await appointmentModel.findOneAndUpdate(
+        filter,
+        { status: req.body.status },
+        { new: true, runValidators: true }
+      );
+    } else {
+      if (req.user.role === "doctor") {
+        return res.status(403).json({
+          success: false,
+          message: "Doctors cannot reschedule appointments from this route",
+        });
+      }
+
+      const currentAppointment = await appointmentModel.findOne(filter);
+      if (!currentAppointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found",
+        });
+      }
+
+      let nextDoctorId = currentAppointment.doctorID;
+      if (req.body.doctorID) {
+        const doctor = await doctorModel.findById(req.body.doctorID);
+        if (!doctor) {
+          return res.status(404).json({
+            success: false,
+            message: "Doctor profile not found",
+          });
+        }
+
+        if (doctor.status === "Away") {
+          return res.status(400).json({
+            success: false,
+            message: "Doctor is currently unavailable (Status: Away)",
+          });
+        }
+
+        nextDoctorId = doctor._id;
+      }
+
+      const nextDate = req.body.date || currentAppointment.date;
+      const nextDateNormalized = normalizeToUtcDateOnly(nextDate);
+      if (!nextDateNormalized) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid appointment date",
+        });
+      }
+      const nextTimeSlot = req.body.timeSlot || currentAppointment.timeSlot;
+
+      const slotConflict = await appointmentModel.findOne({
+        _id: { $ne: currentAppointment._id },
+        doctorID: nextDoctorId,
+        date: nextDateNormalized,
+        timeSlot: nextTimeSlot,
+      });
+
+      if (slotConflict) {
+        return res.status(409).json({
+          success: false,
+          message: "This time slot is already booked for the doctor.",
+        });
+      }
+
+      appointment = await appointmentModel.findOneAndUpdate(
+        filter,
+        {
+          doctorID: nextDoctorId,
+          date: nextDateNormalized,
+          timeSlot: nextTimeSlot,
+          reason: req.body.reason || currentAppointment.reason,
+        },
+        { new: true, runValidators: true }
+      );
+    }
 
     if (!appointment) {
       return res.status(404).json({
@@ -225,19 +423,13 @@ const updateAppointment = async (req, res) => {
       });
     }
 
-    // Invalidate appointment caches for doctor and patient
-    const doctorIdStr = appointment.doctorID?.toString();
-    const patientIdStr = appointment.patientID?.toString();
-    if (doctorIdStr) {
-      await cache.del(`doctor:${doctorIdStr}:appointments`);
-    }
-    if (patientIdStr) {
-      await cache.delPattern(`user:${patientIdStr}:appointments:*`);
-    }
+    await invalidateAppointmentCache(appointment);
 
     return res.status(200).json({
       success: true,
-      message: "Appointment status updated",
+      message: hasStatusUpdate
+        ? "Appointment status updated"
+        : "Appointment updated successfully",
       data: appointment,
     });
   } catch (err) {
@@ -247,6 +439,11 @@ const updateAppointment = async (req, res) => {
       error: err.message,
     });
   }
+};
+
+const cancelAppointment = async (req, res) => {
+  req.body.status = "Cancelled";
+  return updateAppointment(req, res);
 };
 
 const getAppointment = async (req, res) => {
@@ -282,19 +479,20 @@ const getAppointment = async (req, res) => {
       if (appointmentId && mongoose.Types.ObjectId.isValid(appointmentId)) {
         filter._id = appointmentId;
       }
-    } else if (role === "patient") {
-      // Try cached patient ObjectId
+    } else if (role === "patient" || role === "user") {
       let patientId = await cache.get(`user:${userID}:patientId`);
       if (!patientId) {
         const patient = await patientModel
           .findOne({ patientID: userID })
           .select("_id")
           .lean();
-        if (!patient)
-          return res.status(404).json({
-            success: false,
-            message: "Patient not found",
+        if (!patient) {
+          return res.status(200).json({
+            success: true,
+            message: "Appointments retrieved successfully",
+            data: [],
           });
+        }
         patientId = patient._id;
         await cache.set(`user:${userID}:patientId`, patientId, 600);
       }
@@ -352,6 +550,7 @@ const getAllAppointments = async (req, res) => {
 export {
   createAppointment,
   updateAppointment,
+  cancelAppointment,
   getAppointment,
   getAllAppointments,
 };

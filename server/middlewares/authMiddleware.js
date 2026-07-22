@@ -35,4 +35,18 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-export { verifyToken, adminOnly };
+const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!req.user?.role || !roles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied",
+    });
+  }
+
+  next();
+};
+
+const doctorOnly = authorizeRoles("doctor");
+const patientOnly = authorizeRoles("patient");
+
+export { verifyToken, authorizeRoles, adminOnly, doctorOnly, patientOnly };

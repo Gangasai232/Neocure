@@ -19,7 +19,7 @@ const AdminDialog = ({ open, onOpenChange, oldUser, callBack }) => {
         ["patient", "doctor"].includes(oldUser.role) &&
           (await admin.delete(`/${oldUser.role}s/${oldUser._id}`));
       }
-      const res = await admin.put(`/users/${oldUser._id}`, { role: "admin" });
+      await admin.put(`/users/${oldUser._id}`, { role: "admin" });
       toast.success("User is now an admin");
 
       callBack();

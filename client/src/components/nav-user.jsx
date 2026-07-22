@@ -6,8 +6,9 @@ import {
   Phone,
   User,
 } from "lucide-react";
+import { useState } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -30,11 +40,13 @@ export function NavUser() {
   const { name, email, clearUser } = useUserStore();
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     clearUser();
     navigate("/login");
+    setLogoutDialogOpen(false);
   };
 
   return (
@@ -99,18 +111,38 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className={"p-0"} onClick={handleLogout}>
-              <Link
-                to="#"
-                onClick={handleLogout}
-                className="py-1.5 px-2 rounded-sm w-full hover:bg-red-500 hover:text-white transition-all font-semibold flex items-center gap-2 text-red-500"
-              >
-                <LogOut className="text-inherit" />
-                Logout
-              </Link>
+            <DropdownMenuItem
+              variant="destructive"
+              className="cursor-pointer font-semibold"
+              onClick={() => setLogoutDialogOpen(true)}
+            >
+              <LogOut />
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm logout</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to logout from your account?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setLogoutDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleLogout}>
+                Logout
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SidebarMenuItem>
     </SidebarMenu>
   );

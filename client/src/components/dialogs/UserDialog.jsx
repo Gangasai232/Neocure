@@ -63,7 +63,7 @@ const UserDialog = ({
     }
 
     setEdit(!viewOnly);
-  }, [roleData, open, viewOnly]);
+  }, [form, roleData, open, viewOnly]);
 
   const onSubmit = async (data) => {
     try {

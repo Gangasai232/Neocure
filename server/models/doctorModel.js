@@ -33,6 +33,17 @@ const doctorSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    department: {
+      type: String,
+      trim: true,
+      default: "General Medicine",
+      index: true,
+    },
+    profilePhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["Active", "Away"],
@@ -63,6 +74,8 @@ doctorSchema.post("findOneAndDelete", async (doc) => {
     });
   }
 });
+
+doctorSchema.index({ specialization: 1 });
 
 const doctorModel = mongoose.model("doctors", doctorSchema);
 

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FaGoogle } from "react-icons/fa";
 
 export function LoginForm({ className, ...props }) {
   return (
@@ -15,7 +14,7 @@ export function LoginForm({ className, ...props }) {
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Welcome Back</h1>
                 <p className="text-muted-foreground text-balance">
-                  Login to your account
+                  Login with your email
                 </p>
               </div>
               <div className="grid gap-3">
@@ -28,31 +27,12 @@ export function LoginForm({ className, ...props }) {
                 />
               </div>
               <div className="grid gap-3">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" required />
               </div>
               <Button type="submit" className="w-full">
                 <span className="font-bold"> Login </span>
               </Button>
-              <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-                <span className="bg-card text-muted-foreground relative z-10 px-2">
-                  Or continue with
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <Button variant="outline" type="button" className="w-full">
-                  <FaGoogle />
-                  <p className="font-bold pb-0.5">Login with Google</p>
-                </Button>
-              </div>
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
                 <a href="#" className="underline underline-offset-4">

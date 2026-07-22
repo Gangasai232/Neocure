@@ -28,42 +28,16 @@ const DoctorHome = React.lazy(() => import("./pages/doctor/DoctorHome"));
 const DoctorAppointments = React.lazy(
   () => import("./pages/doctor/Appointments"),
 );
-const Prediction = React.lazy(() => import("./pages/Prediction"));
 const Error = React.lazy(() => import("./pages/Error"));
 
 // Loading component with spinner
 const LoadingSpinner = () => (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      height: "100vh",
-      backgroundColor: "#f5f5f5",
-    }}
-  >
-    <div style={{ textAlign: "center" }}>
-      <div
-        style={{
-          width: "50px",
-          height: "50px",
-          border: "4px solid #e0e0e0",
-          borderTop: "4px solid #3b82f6",
-          borderRadius: "50%",
-          animation: "spin 1s linear infinite",
-          margin: "0 auto 16px",
-        }}
-      />
-      <p style={{ color: "#666", fontSize: "14px", fontWeight: "500" }}>
-        Loading...
+  <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_transparent_40%),linear-gradient(180deg,_rgba(239,246,255,0.85),_rgba(255,255,255,1))] px-6 dark:bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_35%),linear-gradient(180deg,_rgba(2,6,23,1),_rgba(15,23,42,1))]">
+    <div className="rounded-3xl border border-blue-100/80 bg-white/90 px-10 py-8 text-center shadow-2xl shadow-blue-100/60 backdrop-blur dark:border-blue-900/60 dark:bg-slate-950/80 dark:shadow-blue-950/30">
+      <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+      <p className="text-sm font-semibold tracking-[0.2em] text-slate-500 uppercase dark:text-slate-300">
+        Loading workspace
       </p>
-      <style>
-        {`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}
-      </style>
     </div>
   </div>
 );
@@ -91,7 +65,6 @@ const App = () => {
           <Route path="/support" element={<Support />} />
           <Route path="/services" element={<Services />} />
           <Route path="/transactions" element={<Transactions />} />
-          <Route path="/predictor" element={<Prediction />} />
         </Route>
 
         {/* Admin-only routes */}

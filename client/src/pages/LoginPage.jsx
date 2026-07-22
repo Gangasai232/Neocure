@@ -8,9 +8,7 @@ import { useUserStore } from "@/store/userStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { FaGoogle } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -90,7 +88,7 @@ export default function LoginPage() {
     };
 
     verifyToken();
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, setUser]);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -172,7 +170,7 @@ export default function LoginPage() {
                           Welcome Back
                         </h1>
                         <p className="text-muted-foreground text-balance">
-                          Login to your account to continue
+                          Login with your email to continue
                         </p>
                       </div>
 
@@ -199,15 +197,7 @@ export default function LoginPage() {
                         name="password"
                         render={({ field }) => (
                           <FormItem>
-                            <div className="flex items-center">
-                              <FormLabel>Password</FormLabel>
-                              <a
-                                href="#"
-                                className="ml-auto text-sm underline-offset-2 hover:underline"
-                              >
-                                Forgot your password?
-                              </a>
-                            </div>
+                            <FormLabel>Password</FormLabel>
                             <FormControl>
                               <Input type="password" {...field} />
                             </FormControl>
@@ -229,21 +219,6 @@ export default function LoginPage() {
                         ) : (
                           "Login"
                         )}
-                      </Button>
-
-                      <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-                        <span className="bg-card text-muted-foreground relative z-10 px-2">
-                          Or continue with
-                        </span>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        type="button"
-                        className="w-full group hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all duration-300 hover:border-blue-500 dark:hover:border-blue-400"
-                      >
-                        <FaGoogle className="text-red-500 group-hover:scale-110 transition-transform duration-300" />
-                        <p className="font-bold pb-0.5">Login with Google</p>
                       </Button>
 
                       <div className="text-center text-sm">

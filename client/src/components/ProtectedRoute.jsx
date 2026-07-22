@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
         } else {
           setStatus({ loading: false, allowed: false });
         }
-      } catch (err) {
+      } catch {
         setStatus({ loading: false, allowed: false });
       }
     };

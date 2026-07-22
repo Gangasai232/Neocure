@@ -5,7 +5,8 @@ const getUserInfo = async (req, res) => {
   const id = req.user.id;
 
   try {
-    const userData = await authModel.findById(id);
+    const userData =
+      req.cachedUser || (await authModel.findById(id).select("-password"));
     if (!userData) {
       return res.status(404).json({
         success: false,
@@ -21,6 +22,7 @@ const getUserInfo = async (req, res) => {
         name: userData.name,
         email: userData.email,
         role: userData.role,
+        avatar: userData.avatar || null,
       },
     });
   } catch (err) {

@@ -30,13 +30,28 @@ const CartSheet = ({ open, onOpenChange }) => {
   const handleCheckout = async () => {
     onOpenChange(false);
     try {
-      const amount = getTotal();
+      const amount = Number(getTotal());
+      if (!Number.isFinite(amount) || amount <= 0) {
+        toast.error("Cart total must be greater than 0.");
+        return;
+      }
+
+      if (!window.Razorpay) {
+        toast.error("Razorpay SDK not loaded. Please refresh and try again.");
+        return;
+      }
+
       const { data } = await api.post("/payment/create-order", { amount });
 
       if (!data.success) throw new Error("Order creation failed");
+      const checkoutKey = razorpayKey || data.key_id;
+      if (!checkoutKey) {
+        toast.error("Razorpay key is missing. Contact support.");
+        return;
+      }
 
       const options = {
-        key: razorpayKey,
+        key: checkoutKey,
         amount: data.order.amount,
         currency: data.order.currency,
         name: "NeoCure Hospital",
@@ -66,10 +81,21 @@ const CartSheet = ({ open, onOpenChange }) => {
       };
 
       const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (response) {
+        toast.error(
+          response?.error?.description ||
+            "Payment was not completed. Please try again.",
+        );
+      });
       rzp.open();
     } catch (err) {
       console.error(err);
-      toast.error("Payment failed. Please try again.");
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Payment failed. Please try again.",
+      );
     }
   };
 

@@ -26,9 +26,17 @@ import AppointmentDialog from "@/components/dialogs/AppointmentDialog";
 
 const schema = z.object({
   doctorID: z.string(),
-  date: z.date().refine((d) => d >= new Date(new Date().setHours(0, 0, 0, 0)), {
-    message: "Date cannot be in the past",
-  }),
+  date: z.union([z.date(), z.string()]).refine(
+    (d) => {
+      const parsed = new Date(d);
+      if (isNaN(parsed.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      parsed.setHours(0, 0, 0, 0);
+      return parsed >= today;
+    },
+    { message: "Date cannot be in the past" }
+  ),
   reason: z.string().min(1, { message: "Reason cannot be empty" }),
   timeSlot: z.enum(["Morning", "Afternoon", "Evening"], {
     errorMap: () => ({ message: "Select a valid time slot" }),
@@ -86,7 +94,7 @@ const Appointments = () => {
       setAppointments((prev) =>
         prev.filter((a) => a._id !== selectedAppointment._id)
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to cancel appointment");
     } finally {
       setCancelDialogOpen(false);

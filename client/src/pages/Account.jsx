@@ -155,7 +155,7 @@ const Account = () => {
       phone: details.phone || "",
       description: details.description || "",
     });
-  }, [details]);
+  }, [details, form]);
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background text-foreground">
