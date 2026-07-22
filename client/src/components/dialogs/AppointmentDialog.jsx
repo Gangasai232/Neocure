@@ -1,5 +1,5 @@
 // components/AppointmentDialog.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +15,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDownIcon } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -44,7 +38,58 @@ const AppointmentDialog = ({
   onSuccess,
 }) => {
   const isEdit = mode === "edit";
-  const [popoverOpen, setPopoverOpen] = React.useState(false);
+
+  const getTodayFormatted = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getAvailableSlots = (dateValue) => {
+    const allSlots = ["Morning", "Afternoon", "Evening"];
+    if (!dateValue) return allSlots;
+
+    let d;
+    if (dateValue instanceof Date) {
+      d = dateValue;
+    } else if (typeof dateValue === "string") {
+      const parts = dateValue.split("T")[0].split("-").map(Number);
+      if (parts.length === 3 && !parts.some(isNaN)) {
+        d = new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+    }
+
+    if (!d || isNaN(d.getTime())) return allSlots;
+
+    const today = new Date();
+    const isToday =
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+
+    if (isToday) {
+      const currentHour = today.getHours();
+      if (currentHour >= 17) {
+        return ["Evening"];
+      } else if (currentHour >= 12) {
+        return ["Afternoon", "Evening"];
+      }
+    }
+
+    return allSlots;
+  };
+
+  const watchDate = form.watch("date");
+  const watchTimeSlot = form.watch("timeSlot");
+
+  useEffect(() => {
+    const available = getAvailableSlots(watchDate);
+    if (available.length > 0 && !available.includes(watchTimeSlot)) {
+      form.setValue("timeSlot", available[0]);
+    }
+  }, [watchDate, watchTimeSlot, form]);
 
   const handleSubmit = async (values) => {
     try {
@@ -56,6 +101,14 @@ const AppointmentDialog = ({
         dateString = `${year}-${month}-${day}`;
       } else if (typeof values.date === "string") {
         dateString = values.date.split("T")[0];
+      }
+
+      const available = getAvailableSlots(dateString);
+      if (!available.includes(values.timeSlot)) {
+        toast.error(
+          `The ${values.timeSlot} time slot for today has already passed. Please select another time slot.`
+        );
+        return;
       }
 
       const payload = {
@@ -82,20 +135,22 @@ const AppointmentDialog = ({
     }
   };
 
-  const parseDateSafely = (val) => {
-    if (!val) return null;
-    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-    if (typeof val === "string") {
-      const cleanStr = val.split("T")[0];
-      if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
-        const [year, month, day] = cleanStr.split("-").map(Number);
-        return new Date(year, month - 1, day);
-      }
-      const d = new Date(val);
-      return isNaN(d.getTime()) ? null : d;
+  const dateValueString = React.useMemo(() => {
+    const val = watchDate;
+    if (!val) return getTodayFormatted();
+    if (val instanceof Date) {
+      const year = val.getFullYear();
+      const month = String(val.getMonth() + 1).padStart(2, "0");
+      const day = String(val.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     }
-    return null;
-  };
+    if (typeof val === "string") {
+      return val.split("T")[0];
+    }
+    return getTodayFormatted();
+  }, [watchDate]);
+
+  const availableSlots = getAvailableSlots(watchDate);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -106,7 +161,11 @@ const AppointmentDialog = ({
           </DialogTitle>
           <DialogDescription>
             {selectedDoctor
-              ? `Edit details for appointment with ${selectedDoctor.name?.startsWith("Dr.") ? selectedDoctor.name : `Dr. ${selectedDoctor.name}`}`
+              ? `Edit details for appointment with ${
+                  selectedDoctor.name?.startsWith("Dr.")
+                    ? selectedDoctor.name
+                    : `Dr. ${selectedDoctor.name}`
+                }`
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -125,65 +184,48 @@ const AppointmentDialog = ({
               <FormField
                 control={form.control}
                 name="date"
-                render={({ field }) => {
-                  const calendarDate = parseDateSafely(field.value);
-                  const displayValue = calendarDate
-                    ? calendarDate.toLocaleDateString()
-                    : "Select date";
-
-                  return (
-                    <FormItem className="flex flex-col gap-3 w-1/2">
-                      <FormLabel>Date of Appointment</FormLabel>
-                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full justify-between font-normal"
-                            >
-                              {displayValue}
-                              <ChevronDownIcon />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={calendarDate || undefined}
-                            captionLayout="dropdown"
-                            onSelect={(date) => {
-                              if (date) {
-                                field.onChange(date);
-                                setPopoverOpen(false);
-                              }
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2 w-full md:w-1/2">
+                    <FormLabel>Date of Appointment</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={getTodayFormatted()}
+                        value={dateValueString}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            const [y, m, d] = val.split("-").map(Number);
+                            field.onChange(new Date(y, m - 1, d));
+                          }
+                        }}
+                        className="w-full cursor-pointer rounded-xl border border-input px-3 py-2 text-sm"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <FormField
                 control={form.control}
                 name="timeSlot"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col gap-3 w-1/2">
+                  <FormItem className="flex flex-col gap-2 w-full md:w-1/2">
                     <FormLabel>Time Slot</FormLabel>
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        value={field.value}
+                        value={field.value || availableSlots[0]}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a time slot" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Morning">Morning</SelectItem>
-                          <SelectItem value="Afternoon">Afternoon</SelectItem>
-                          <SelectItem value="Evening">Evening</SelectItem>
+                          {availableSlots.map((slot) => (
+                            <SelectItem key={slot} value={slot}>
+                              {slot}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </FormControl>

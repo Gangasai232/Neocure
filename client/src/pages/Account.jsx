@@ -475,7 +475,11 @@ const Account = () => {
                       appointments.map((appointment) => (
                         <TableRow key={appointment._id}>
                           <TableCell>
-                            {format(appointment.date, "do MMMM yyyy")}
+                            {appointment.date
+                              ? typeof appointment.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(appointment.date.split("T")[0])
+                                ? appointment.date.split("T")[0]
+                                : format(new Date(appointment.date), "do MMMM yyyy")
+                              : "N/A"}
                           </TableCell>
                           <TableCell>{appointment.timeSlot}</TableCell>
                           <TableCell>{appointment.doctorID.name}</TableCell>
