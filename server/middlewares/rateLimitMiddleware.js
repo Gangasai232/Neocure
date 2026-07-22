@@ -4,18 +4,12 @@ export const createRateLimitMiddleware = (config) => {
   const { identifier, envKey } = config;
 
   // Parse configuration at middleware creation time
-  const rateLimitConfig = process.env[envKey];
-  if (!rateLimitConfig) {
-    throw new Error(`Missing environment variable: ${envKey}`);
-  }
-
+  const rateLimitConfig = process.env[envKey] || "100:15";
   let parsedConfig;
   try {
     parsedConfig = parseRateLimitConfig(rateLimitConfig);
   } catch (error) {
-    throw new Error(
-      `Invalid rate limit config for ${envKey}: ${error.message}`
-    );
+    parsedConfig = { limit: 100, windowMs: 15 * 60 * 1000 };
   }
 
   return async (req, res, next) => {
